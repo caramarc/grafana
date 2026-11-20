@@ -102,6 +102,7 @@ type receiverAccessControlService interface {
 
 type alertmanagerConfigStore interface {
 	Get(ctx context.Context, orgID int64) (*legacy_storage.ConfigRevision, error)
+	LoadLimits(ctx context.Context, revision *legacy_storage.ConfigRevision)
 	Save(ctx context.Context, revision *legacy_storage.ConfigRevision, orgID int64) error
 }
 
@@ -346,6 +347,7 @@ func (rs *ReceiverService) DeleteReceiver(ctx context.Context, uid string, calle
 
 	revision.DeleteReceiver(uid)
 
+	rs.cfgStore.LoadLimits(ctx, revision)
 	err = rs.xact.InTransaction(ctx, func(ctx context.Context) error {
 		err = rs.cfgStore.Save(ctx, revision, orgID)
 		if err != nil {
@@ -430,6 +432,7 @@ func (rs *ReceiverService) CreateReceiver(ctx context.Context, r *models.Receive
 		return nil, err
 	}
 
+	rs.cfgStore.LoadLimits(ctx, revision)
 	err = rs.xact.InTransaction(ctx, func(ctx context.Context) error {
 		err = rs.cfgStore.Save(ctx, revision, orgID)
 		if err != nil {
@@ -560,6 +563,7 @@ func (rs *ReceiverService) UpdateReceiver(ctx context.Context, r *models.Receive
 		return nil, err
 	}
 
+	rs.cfgStore.LoadLimits(ctx, revision)
 	err = rs.xact.InTransaction(ctx, func(ctx context.Context) error {
 		// If the name of the receiver changed, we must update references to it in both routes and notification settings.
 		if existing.Name != r.Name {

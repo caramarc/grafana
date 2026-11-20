@@ -261,6 +261,7 @@ func (ecp *ContactPointService) CreateContactPoint(
 		receiverUID = string(newReceiver.UID)
 	}
 
+	ecp.configStore.LoadLimits(ctx, revision)
 	err = ecp.xact.InTransaction(ctx, func(ctx context.Context) error {
 		if err := ecp.configStore.Save(ctx, revision, orgID); err != nil {
 			return err
@@ -368,6 +369,7 @@ func (ecp *ContactPointService) UpdateContactPoint(ctx context.Context, orgID in
 		return err
 	}
 
+	ecp.configStore.LoadLimits(ctx, revision)
 	err = ecp.xact.InTransaction(ctx, func(ctx context.Context) error {
 		if newReceiver != nil {
 			if newReceiverCreated {
@@ -482,6 +484,7 @@ func (ecp *ContactPointService) DeleteContactPoint(ctx context.Context, orgID in
 		}
 	}
 
+	ecp.configStore.LoadLimits(ctx, revision)
 	return ecp.xact.InTransaction(ctx, func(ctx context.Context) error {
 		if fullRemoval && receiverNameToBeRemoved != "" {
 			used, err := ecp.notificationSettingsStore.ListContactPointRoutings(ctx, models.ListContactPointRoutingsQuery{OrgID: orgID, ReceiverName: receiverNameToBeRemoved})

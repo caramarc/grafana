@@ -12,6 +12,7 @@ import (
 
 type alertmanagerConfigStore interface {
 	Get(ctx context.Context, orgID int64) (*legacy_storage.ConfigRevision, error)
+	LoadLimits(ctx context.Context, revision *legacy_storage.ConfigRevision)
 	Save(ctx context.Context, revision *legacy_storage.ConfigRevision, orgID int64) error
 }
 

@@ -188,9 +188,11 @@ func TestAlertmanagerConfigStoreSave(t *testing.T) {
 type fakeLimitsProvider struct {
 	limits *client.TenantLimits
 	err    error
+	calls  int
 }
 
 func (f *fakeLimitsProvider) GetLimits(_ context.Context) (*client.TenantLimits, error) {
+	f.calls++
 	return f.limits, f.err
 }
 
@@ -254,6 +256,7 @@ func TestAlertmanagerConfigStoreSaveSizeLimit(t *testing.T) {
 
 			c := cfg
 			revision := &ConfigRevision{Config: &c, storedSize: tc.storedSize}
+			sut.LoadLimits(context.Background(), revision)
 			err := sut.Save(context.Background(), revision, orgID)
 
 			if tc.expectErr {

@@ -173,6 +173,7 @@ func (svc *MuteTimingService) CreateMuteTiming(ctx context.Context, mt v1.TimeIn
 	}
 	created := revision.SetTimeInterval(mt)
 
+	svc.configStore.LoadLimits(ctx, revision)
 	err = svc.xact.InTransaction(ctx, func(ctx context.Context) error {
 		if err := svc.configStore.Save(ctx, revision, orgID); err != nil {
 			return err
@@ -240,6 +241,7 @@ func (svc *MuteTimingService) UpdateMuteTiming(ctx context.Context, mt v1.TimeIn
 	updated := revision.SetTimeInterval(mt)
 
 	// TODO add diff and noop detection
+	svc.configStore.LoadLimits(ctx, revision)
 	err = svc.xact.InTransaction(ctx, func(ctx context.Context) error {
 		// if the name of the time interval changed
 		if existing.Title != updated.Title {
@@ -323,6 +325,7 @@ func (svc *MuteTimingService) deleteMuteTiming(ctx context.Context, orgID int64,
 	}
 	revision.DeleteTimeInterval(existing.UID)
 
+	svc.configStore.LoadLimits(ctx, revision)
 	return svc.xact.InTransaction(ctx, func(ctx context.Context) error {
 		keys, err := svc.ruleNotificationsStore.ListContactPointRoutings(ctx, models.ListContactPointRoutingsQuery{OrgID: orgID, TimeIntervalName: existing.Title})
 		if err != nil {

@@ -31,6 +31,7 @@ type transactionManager interface {
 
 type alertmanagerConfigStore interface {
 	Get(ctx context.Context, orgID int64) (*legacy_storage.ConfigRevision, error)
+	LoadLimits(ctx context.Context, revision *legacy_storage.ConfigRevision)
 	Save(ctx context.Context, revision *legacy_storage.ConfigRevision, orgID int64) error
 }
 
@@ -260,6 +261,7 @@ func (nps *Service) UpdateManagedRoute(ctx context.Context, orgID int64, name st
 	}
 	updated.Provenance = p
 
+	nps.configStore.LoadLimits(ctx, revision)
 	err = nps.xact.InTransaction(ctx, func(ctx context.Context) error {
 		if err := nps.configStore.Save(ctx, revision, orgID); err != nil {
 			return err
@@ -339,6 +341,7 @@ func (nps *Service) DeleteManagedRoute(ctx context.Context, orgID int64, name st
 		revision.DeleteManagedRoute(name)
 	}
 
+	nps.configStore.LoadLimits(ctx, revision)
 	err = nps.xact.InTransaction(ctx, func(ctx context.Context) error {
 		if err := nps.configStore.Save(ctx, revision, orgID); err != nil {
 			return err
@@ -398,6 +401,7 @@ func (nps *Service) CreateManagedRoute(ctx context.Context, orgID int64, name st
 		}
 	}
 
+	nps.configStore.LoadLimits(ctx, revision)
 	err = nps.xact.InTransaction(ctx, func(ctx context.Context) error {
 		if err := nps.configStore.Save(ctx, revision, orgID); err != nil {
 			return err

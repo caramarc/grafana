@@ -244,6 +244,7 @@ func (t *TemplateService) createTemplate(ctx context.Context, revision *legacy_s
 	}
 
 	created := revision.SetTemplate(tmpl)
+	t.configStore.LoadLimits(ctx, revision)
 	err := t.xact.InTransaction(ctx, func(ctx context.Context) error {
 		if err := t.configStore.Save(ctx, revision, orgID); err != nil {
 			return err
@@ -311,6 +312,7 @@ func (t *TemplateService) updateTemplate(ctx context.Context, revision *legacy_s
 
 	updated := revision.SetTemplate(tmpl)
 
+	t.configStore.LoadLimits(ctx, revision)
 	err = t.xact.InTransaction(ctx, func(ctx context.Context) error {
 		if existing.Title != updated.Title { // The template keeps its UID, so only the provenance, which is keyed by the title, is removed.
 			err := t.provenanceStore.DeleteProvenance(ctx, &existing, orgID)
@@ -376,6 +378,7 @@ func (t *TemplateService) deleteTemplate(ctx context.Context, orgID int64, prove
 	}
 
 	revision.DeleteTemplate(existing.UID)
+	t.configStore.LoadLimits(ctx, revision)
 	return t.xact.InTransaction(ctx, func(ctx context.Context) error {
 		if err := t.configStore.Save(ctx, revision, orgID); err != nil {
 			return err

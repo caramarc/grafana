@@ -34,9 +34,10 @@ type methodCall struct {
 }
 
 type AlertmanagerConfigStoreFake struct {
-	Calls  []methodCall
-	GetFn  func(ctx context.Context, orgID int64) (*ConfigRevision, error)
-	SaveFn func(ctx context.Context, revision *ConfigRevision) error
+	Calls     []methodCall
+	LoadCalls int
+	GetFn     func(ctx context.Context, orgID int64) (*ConfigRevision, error)
+	SaveFn    func(ctx context.Context, revision *ConfigRevision) error
 }
 
 func (a *AlertmanagerConfigStoreFake) Get(ctx context.Context, orgID int64) (*ConfigRevision, error) {
@@ -48,6 +49,10 @@ func (a *AlertmanagerConfigStoreFake) Get(ctx context.Context, orgID int64) (*Co
 		return a.GetFn(ctx, orgID)
 	}
 	return nil, nil
+}
+
+func (a *AlertmanagerConfigStoreFake) LoadLimits(ctx context.Context, revision *ConfigRevision) {
+	a.LoadCalls++
 }
 
 func (a *AlertmanagerConfigStoreFake) Save(ctx context.Context, revision *ConfigRevision, orgID int64) error {

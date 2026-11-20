@@ -16,6 +16,7 @@ import (
 
 type alertmanagerConfigStore interface {
 	Get(ctx context.Context, orgID int64) (*legacy_storage.ConfigRevision, error)
+	LoadLimits(ctx context.Context, revision *legacy_storage.ConfigRevision)
 	Save(ctx context.Context, revision *legacy_storage.ConfigRevision, orgID int64) error
 }
 
@@ -110,6 +111,7 @@ func (svc *Service) CreateInhibitionRule(ctx context.Context, rule v1.Inhibition
 
 	created := revision.SetInhibitionRule(rule)
 
+	svc.configStore.LoadLimits(ctx, revision)
 	if err := svc.configStore.Save(ctx, revision, orgID); err != nil {
 		return v1.InhibitionRule{}, err
 	}
@@ -151,6 +153,7 @@ func (svc *Service) UpdateInhibitionRule(ctx context.Context, rule v1.Inhibition
 
 	updated := revision.SetInhibitionRule(rule)
 
+	svc.configStore.LoadLimits(ctx, revision)
 	if err := svc.configStore.Save(ctx, revision, orgID); err != nil {
 		return v1.InhibitionRule{}, err
 	}
@@ -187,6 +190,7 @@ func (svc *Service) DeleteInhibitionRule(ctx context.Context, uid v1.ResourceUID
 	}
 
 	revision.DeleteInhibitionRule(existing.UID)
+	svc.configStore.LoadLimits(ctx, revision)
 	return svc.configStore.Save(ctx, revision, orgID)
 }
 

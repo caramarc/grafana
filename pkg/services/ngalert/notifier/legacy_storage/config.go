@@ -55,6 +55,8 @@ type ConfigRevision struct {
 
 	// storedSize is the size in bytes of the serialized configuration this revision was read from.
 	storedSize int
+	// limits are the remote Alertmanager limits fetched by LoadLimits.
+	limits *client.TenantLimits
 }
 type alertmanagerConfigStoreImpl struct {
 	store    amConfigStore
@@ -105,6 +107,19 @@ func (a alertmanagerConfigStoreImpl) Get(ctx context.Context, orgID int64) (*Con
 	}, nil
 }
 
+// LoadLimits fetches the remote Alertmanager limits and attaches them to the revision for Save to validate against.
+func (a alertmanagerConfigStoreImpl) LoadLimits(ctx context.Context, revision *ConfigRevision) {
+	if a.limits == nil || revision == nil {
+		return
+	}
+	limits, err := a.limits.GetLimits(ctx)
+	if err != nil {
+		a.logger.Warn("Failed to fetch limits, skipping config size validation", "error", err)
+		return
+	}
+	revision.limits = limits
+}
+
 func (a alertmanagerConfigStoreImpl) Save(ctx context.Context, revision *ConfigRevision, orgID int64) error {
 	err := a.crypto.EncryptExtraConfigs(ctx, revision.Config)
 	if err != nil {
@@ -115,8 +130,10 @@ func (a alertmanagerConfigStoreImpl) Save(ctx context.Context, revision *ConfigR
 	if err != nil {
 		return err
 	}
-	if err := ValidateConfigSize(ctx, a.limits, a.logger, len(serialized), revision.storedSize); err != nil {
-		return err
+	if len(serialized) > revision.storedSize {
+		if err := checkConfigSize(revision.limits, len(serialized)); err != nil {
+			return err
+		}
 	}
 	return a.store.UpdateAlertmanagerConfiguration(ctx, &models.SaveAlertmanagerConfigurationCmd{
 		AlertmanagerConfiguration: string(serialized),
@@ -129,8 +146,7 @@ func (a alertmanagerConfigStoreImpl) Save(ctx context.Context, revision *ConfigR
 
 // ValidateConfigSize rejects a configuration that exceeds the remote Alertmanager size limit.
 // It fails open when limits are unavailable, so a remote Alertmanager outage does not block writes.
-// Writes that do not grow the configuration return before the limits lookup, so shrinking writes never
-// wait on the remote Alertmanager. Callers should run it before opening a database transaction.
+// Writes that do not grow the configuration return before the limits check.
 func ValidateConfigSize(ctx context.Context, provider LimitsProvider, logger log.Logger, newSize, storedSize int) error {
 	if provider == nil || newSize <= storedSize {
 		return nil
@@ -142,6 +158,10 @@ func ValidateConfigSize(ctx context.Context, provider LimitsProvider, logger log
 		}
 		return nil
 	}
+	return checkConfigSize(limits, newSize)
+}
+
+func checkConfigSize(limits *client.TenantLimits, newSize int) error {
 	if limits == nil || limits.Config == nil || limits.Config.MaxGrafanaConfigSizeBytes <= 0 {
 		return nil
 	}
